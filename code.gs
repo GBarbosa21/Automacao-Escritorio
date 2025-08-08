@@ -1,42 +1,63 @@
 /**
- * ESTE ARQUIVO CONTÉM APENAS A LÓGICA DE CONFIGURAÇÃO.
- * Preencha os valores abaixo e execute esta função manualmente sempre
- * que precisar definir ou atualizar as configurações do projeto.
- * * ATENÇÃO: ESTE ARQUIVO NÃO DEVE SER ENVIADO AO GITHUB COM DADOS REAIS.
- * Após a execução, limpe os valores, deixando apenas os placeholders.
+ * @OnlyCurrentDoc
+ * @version 9.0
+ * ARQUIVO PRINCIPAL
+ * Este arquivo contém os gatilhos (roteadores) e a inicialização das
+ * configurações globais do projeto.
  */
-function configurarPropriedades() {
-  const properties = PropertiesService.getScriptProperties();
 
-  properties.setProperties({
-    // --- Configurações Gerais da Planilha ---
-    'NOME_DA_ABA_CLIENTES': 'CLIENTES', // Usado para funções que ainda podem precisar
+// --- Leitura das Propriedades Globais ---
+const props = PropertiesService.getScriptProperties();
+
+const VALOR_STATUS_PRONTO = props.getProperty('VALOR_STATUS_PRONTO');
+const VALOR_STATUS_TRADUCAO = props.getProperty('VALOR_STATUS_TRADUCAO');
+const VALOR_STATUS_REVISAO = props.getProperty('VALOR_STATUS_REVISAO');
+const VALOR_STATUS_ASSINAR_DIGITAL = props.getProperty('VALOR_STATUS_ASSINAR_DIGITAL');
+
+// --- Constantes de Colunas ---
+const COLUNA_STATUS = 8;
+const COLUNA_NOME_CLIENTE = 3;
+const COLUNA_ID_PROJETO = 4;
+const COLUNA_NOTIFICACAO_ENVIADA = 24;
+const COLUNA_DATA_ENTREGA = 7;
+const COLUNA_DATA_CHECK = 2;
+const COLUNA_URGENCIA = 9;
+
+
+/**
+ * GATILHO PRINCIPAL POR EDIÇÃO - Roteador de Ações onEdit.
+ * Esta é a ÚNICA função que deve ser configurada como gatilho "Ao editar".
+ * @param {object} e O objeto de evento do gatilho onEdit.
+ */
+function masterOnEdit(e) {
+  if (!e || !e.range) return;
+
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const nomeAbaEsperado = `${(meses[new Date().getMonth()]).toUpperCase()} ${new Date().getFullYear()}`;
+  
+  const celula = e.range;
+  const planilha = celula.getSheet();
+  
+  if (planilha.getName() === nomeAbaEsperado && celula.getColumn() === COLUNA_STATUS) {
+    const linhaEditada = celula.getRow();
     
-    // --- Textos de Status que Ativam as Automações ---
-    'VALOR_STATUS_PRONTO': '09 Pronto',
-    'VALOR_STATUS_TRADUCAO': '03 Tradução',
-    'VALOR_STATUS_REVISAO': '04 Revisão',
-    'VALOR_STATUS_ASSINAR_DIGITAL': '07 Assinar Digital',
+    // Roteador de Ações
+    if (e.value === VALOR_STATUS_PRONTO) {
+      handleEmailPronto(planilha, linhaEditada);
+    } else if (e.value === VALOR_STATUS_TRADUCAO) {
+      handleDiscordTraducao(planilha, linhaEditada);
+    } else if (e.value === VALOR_STATUS_REVISAO) {
+      handleDiscordRevisao(planilha, linhaEditada);
+    } else if (e.value === VALOR_STATUS_ASSINAR_DIGITAL) {
+      handleDiscordAssinatura(planilha, linhaEditada);
+    }
+  }
+}
 
-    // --- Configurações de E-mail (para o status "Pronto") ---
-    'REMETENTE_EMAIL': 'seu-email-de-envio@exemplo.com',
-    'REMETENTE_NOME': 'Nome da Sua Empresa ou Remetente',
-    'GOOGLE_DRIVE_LOGO_FILE_ID': 'INSIRA_O_ID_DA_IMAGEM_DA_LOGO_DO_DRIVE',
-
-    // --- Configurações da API da OMIE ---
-    'OMIE_APP_KEY': 'INSIRA_SUA_OMIE_APP_KEY',
-    'OMIE_APP_SECRET': 'INSIRA_SUA_OMIE_APP_SECRET',
-    'OMIE_API_URL': 'https://app.omie.com.br/api/v1/geral/clientes/',
-    
-    // --- Configurações do Discord (URLs dos Webhooks) ---
-    'WEBHOOK_URL_TRADUCAO': 'INSIRA_URL_DO_WEBHOOK_DE_TRADUCAO',
-    'WEBHOOK_URL_REVISAO': 'INSIRA_URL_DO_WEBHOOK_DE_REVISAO',
-    'WEBHOOK_URL_ASSINAR_DIGITAL': 'INSIRA_URL_DO_WEBHOOK_ASSINAR_DIGITAL',
-    'WEBHOOK_URL_LEMBRETE_MENSAL': 'INSIRA_A_URL_DO_WEBHOOK_PARA_LEMBRETES',
-
-    // --- IDs Específicos (para mencionar usuários no Discord) ---
-    'DISCORD_USER_ID_PARA_PING': 'INSIRA_O_ID_DO_USUARIO_A_SER_MENCIONADO'
-  });
-
-  SpreadApp.getUi().alert('Propriedades do script configuradas com sucesso!');
+/**
+ * GATILHO POR TEMPO - Envia um lembrete mensal para criar pastas.
+ * Esta função deve ser configurada com um acionador de tempo (ex: todo dia 25 do mês).
+ */
+function enviarLembreteMensal() {
+  handleLembreteMensal();
 }
