@@ -19,9 +19,13 @@ Este projeto em Google Apps Script monitora uma planilha de controle de projetos
 O código é organizado de forma modular para facilitar a manutenção e a escalabilidade:
 
 .
+
 ├── Code.gs             # Arquivo principal, contém os gatilhos e constantes globais.
+
 ├── Handlers.gs         # Contém a lógica de negócio para cada tipo de notificação.
+
 ├── Utilities.gs        # Funções auxiliares reutilizáveis (envio de mensagem, busca na API).
+
 └── Setup.gs            # Script para configuração inicial do ambiente (NÃO ENVIAR COM DADOS).
 
 
