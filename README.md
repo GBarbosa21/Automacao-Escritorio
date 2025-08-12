@@ -6,7 +6,21 @@ Este projeto em Google Apps Script monitora uma planilha de controle de projetos
 
 ## ✨ Funcionalidades
 
-![Notificação Discord] (./Assets/Discord.png)
+<div align="center">
+   <h2>NOTIFICAÇÃO DISCORD</h2>
+  <img src="./Assets/Discord.png" alt="Demonstração da Integração" width="80%">
+</div>
+
+<div align="center">
+   <h2>EMAIL</h2>
+   <img src="./Assets/Email.png" alt="Demonstração do Email" width="70%">
+</div>
+
+<div align="center">
+   <h2>TABELA</h2>   
+  <img src="./Assets/Tabela.png" alt="Demonstração da Automação" width="75%">
+   <hr margin-top:20px>
+</div>
 
 - **Integração com API Externa:** Busca informações de contato do cliente (e-mail) diretamente da API da Omie em tempo real.
 - **Notificação por E-mail com Branding:** Envia um e-mail formatado em HTML com a logo da empresa embutida para o cliente final quando um projeto é marcado como "Pronto".
