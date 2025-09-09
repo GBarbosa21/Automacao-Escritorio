@@ -68,7 +68,9 @@ function masterOnEdit(e) {
 
   // --- FIM DO NOVO BLOCO DE DEBUG ---
 
-  if (planilha.getName() === NOME_DA_ABA_PROJETOS && (celula.getColumn() === COLUNA_STATUS || celula.getColumn() === COLUNA_URGENCIA)) {
+  if(e.value == undefined) { return }
+
+  if ((planilha.getName() === NOME_DA_ABA_PROJETOS || planilha.getName() === NOME_DA_ABA_PROJETOS_ANTERIOR) && (celula.getColumn() === COLUNA_STATUS || celula.getColumn() === COLUNA_URGENCIA)) {
     
     const linhaEditada = celula.getRow();
     const nomeCliente = planilha.getRange(linhaEditada, COLUNA_NOME_CLIENTE).getValue().trim();
@@ -84,12 +86,15 @@ function masterOnEdit(e) {
     const mesFormatado = `${m} ${NOME_DA_ABA_PROJETOS}`;
 
     const cliente = [linhaEditada, nomeCliente, idProjeto, urgencia, mesFormatado, celulaNotificacao, dataEntregaObj, e.value, e.oldValue, statusCliente];
-    console.log(cliente[6])
+
+    let mensagem = `----------------------\nAÇÃO: ${cliente[7]}\n\nCliente: ${cliente[1]}\nID: ${cliente[2]}\n----------------------`;
+
+    enviarMensagemDiscord(mensagem, 'WEBHOOK_HISTORICO');
   
     // Roteador de Ações
-    if (cliente[7] === VALOR_STATUS_PRONTO || cliente[7] === "09 Pronto") {
+    if (cliente[7] === VALOR_STATUS_PRONTO) {
       handleEmailPronto(cliente);
-    } else if (cliente[7] === VALOR_STATUS_TRADUCAO || cliente[7] === "03 Traduzir") {
+    } else if (cliente[7] === VALOR_STATUS_TRADUCAO) {
       handleDiscordTraducao(cliente);
     } else if (cliente[7] === VALOR_STATUS_REVISAO) {
       handleDiscordRevisao(cliente);
@@ -99,10 +104,10 @@ function masterOnEdit(e) {
       handleDiscordImprimir(cliente);
     } else if (cliente[7] === VALOR_STATUS_ASSINAR_IMPRIMIR) {
       handleDiscordAssinarImprimir(cliente);
-    } else if (cliente[7] === VALOR_STATUS_ESCANEAR || cliente[7] === "01 Escanear") {
+    } else if (cliente[7] === VALOR_STATUS_ESCANEAR) {
       moverPasta(cliente);
     } else if (cliente[7] === VALOR_STATUS_NUMERAR) {
-      moverPasta(cliente);
+      handleDiscordNumerar(cliente);
     } else if (cliente[7] === VALOR_STATUS_TRADUCAO_EXTERNA) {
       moverPasta(cliente);
     } else if (celula.getColumn() === COLUNA_URGENCIA) {
