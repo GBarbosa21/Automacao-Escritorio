@@ -93,6 +93,7 @@ function enviarMensagemDiscord(mensagem, chaveWebhook, notificarNaPlanilhaEmCaso
         10 // segundos
       );
     }
+    enviarMensagemDiscord(("-------------------------\nMensagem: '" + mensagem + "' \nEnviada com sucesso!\n-------------------------"), 'WEBHOOK_HISTORICO');
   }
 }
 
@@ -116,31 +117,37 @@ function testarAcessoAoDrive() {
 }
 
 /**
- * Encontra a primeira pasta com um nome exato usando a busca nativa do Drive.
- * É muito mais rápido que a busca recursiva.
- * @param {string} nomeDaPasta O nome exato da pasta a ser encontrada.
- * @returns {GoogleAppsScript.Drive.Folder | null} O objeto da pasta ou null se não for encontrado.
+ * Encontra uma pasta que contenha um nome parcial.
+ * Se uma pasta pai for fornecida, a busca é restrita a essa pasta (local).
+ * Se nenhuma pasta pai for fornecida, a busca é feita em todo o Drive (global).
  */
-
-
-function encontrarPastaPorNome(nomeDaPasta) {
-  const query = `title = '${nomeDaPasta.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+function encontrarPasta(nomeParcial, pastaPaiOpcional) {
+  const nomeEscapado = nomeParcial.replace(/'/g, "\\'");
   
-  Logger.log(`Executando busca no Drive com a query: ${query}`);
+  // A query base é sempre a mesma
+  let query = `title contains '${nomeEscapado}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+
+  // Se uma pasta pai foi fornecida, adicionamos a condição à query
+  if (pastaPaiOpcional) {
+    query += ` and '${pastaPaiOpcional.getId()}' in parents`;
+    Logger.log(`Executando busca LOCAL com a query: ${query}`);
+  } else {
+    Logger.log(`Executando busca GLOBAL com a query: ${query}`);
+  }
   
   const pastas = DriveApp.searchFolders(query);
   
   if (pastas.hasNext()) {
     const pastaEncontrada = pastas.next();
-    Logger.log(`Pasta "${nomeDaPasta}" encontrada com ID: ${pastaEncontrada.getId()}`);
-    if (pastas.hasNext()) {
-      Logger.log(`AVISO: Múltiplas pastas com o nome "${nomeDaPasta}" foram encontradas. Usando a primeira.`);
-    }
-
-    return pastaEncontrada;
+    Logger.log(`Pasta encontrada: "${pastaEncontrada.getName()}" (ID: ${pastaEncontrada.getId()})`);
     
+    if (pastas.hasNext()) {
+      Logger.log(`AVISO: Múltiplas pastas correspondentes foram encontradas. Usando a primeira.`);
+    }
+    return pastaEncontrada;
+
   } else {
-    Logger.log(`AVISO: Nenhuma pasta com o nome "${nomeDaPasta}" foi encontrada na busca.`);
+    Logger.log(`AVISO: Nenhuma pasta correspondente a "${nomeParcial}" foi encontrada com os critérios definidos.`);
     return null;
   }
 }
@@ -279,4 +286,55 @@ function GET_FOLDER_URL(idProjeto, nomeCliente) {
   } catch (e) {
     return "Erro de Script: " + e.toString(); // Mensagem de erro para problemas maiores.
   }
+}
+
+/**
+ * Incrementa o valor da célula de erros de impressão (B12) no Dashboard em +1.
+ */
+function adicionarErroDeImpressao() {
+  const planilha = SpreadsheetApp.getActiveSpreadsheet();
+  const abaDashboard = planilha.getSheetByName("Assinaturas");
+  
+  if (!abaDashboard) {
+    // Se não encontrar a aba, avisa o usuário.
+    SpreadsheetApp.getUi().alert("Aba 'Dashboard' não encontrada.");
+    return;
+  }
+  
+  const celulaErros = abaDashboard.getRange("B12");
+  let valorAtual = celulaErros.getValue();
+  
+  // Garante que o valor atual é um número antes de somar.
+  // Se a célula estiver vazia ou com texto, ele considera como 0.
+  if (typeof valorAtual !== 'number') {
+    valorAtual = 0;
+  }
+  
+  // Define o novo valor na célula
+  celulaErros.setValue(valorAtual + 1);
+}
+
+/**
+ * Decrementa o valor da célula de erros de impressão (B12) no Dashboard em -1.
+ */
+function subtrairErroDeImpressao() {
+  const planilha = SpreadsheetApp.getActiveSpreadsheet();
+  const abaDashboard = planilha.getSheetByName("Assinaturas");
+  
+  if (!abaDashboard) {
+    SpreadsheetApp.getUi().alert("Aba 'Dashboard' não encontrada.");
+    return;
+  }
+  
+  const celulaErros = abaDashboard.getRange("B12");
+  let valorAtual = celulaErros.getValue();
+  
+  // Garante que o valor atual é um número antes de subtrair.
+  if (typeof valorAtual !== 'number' || valorAtual <= 0) {
+    // Se não for um número ou já for zero ou menos, não faz nada.
+    return;
+  }
+  
+  // Define o novo valor na célula
+  celulaErros.setValue(valorAtual - 1);
 }
