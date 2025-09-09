@@ -28,13 +28,13 @@ Este projeto transforma uma Planilha Google de controle de status em uma central
 ## 📂 Estrutura do Projeto
 
 O código é organizado de forma modular para facilitar a manutenção:
-.
-├── Code.gs             # Arquivo principal, contém o gatilho onEdit (roteador).
-├── Handlers.gs         # Contém a lógica principal para cada ação (enviar e-mail, mover pasta, etc.).
-├── Utilities.gs        # Funções auxiliares reutilizáveis (busca na API, formatação de data, etc.).
-├── Setup.gs            # Script para configurar todas as variáveis de ambiente no PropertiesService.
-├── Menu.gs             # Contém o código para a criação do menu personalizado e botões.
-└── AutomacoesDiarias.gs # Contém os scripts acionados por tempo (gatilhos diários).
+</br>.
+</br>├── Code.gs             # Arquivo principal, contém o gatilho onEdit (roteador).
+</br>├── Handlers.gs         # Contém a lógica principal para cada ação (enviar e-mail, mover pasta, etc.).
+</br>├── Utilities.gs        # Funções auxiliares reutilizáveis (busca na API, formatação de data, etc.).
+</br>├── Setup.gs            # Script para configurar todas as variáveis de ambiente no PropertiesService.
+</br>├── Menu.gs             # Contém o código para a criação do menu personalizado e botões.
+</br>└── AutomacoesDiarias.gs # Contém os scripts acionados por tempo (gatilhos diários).
 
 
 ## 🚀 Instalação e Configuração
