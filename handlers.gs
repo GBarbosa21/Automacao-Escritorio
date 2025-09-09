@@ -40,10 +40,10 @@ function handleEmailPronto(c) {
       inlineImages: inlineImages
     });
 
-    celulaNotificacao.setValue("Enviado em " + DT.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }));
+    c[5].setValue("Enviado em " + DT.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }));
 
   } else {
-    celulaNotificacao.setValue("FALHA: Cliente não encontrado na Omie.");
+    c[5].setValue("FALHA: Cliente não encontrado na Omie.");
     Logger.log(`Não foi possível enviar e-mail pois o cliente "${c[1]}" não foi encontrado na Omie.`);
   }
 }
@@ -59,8 +59,19 @@ function handleDiscordTraducao(c) {
   }
 }
 
+/**
+ * Lida com a lógica de enviar notificação de "Numerar" para o Discord.
+ */
+function handleDiscordNumerar(c) {
+  if (c[1] && c[2]) {
+    mensagem = `**${c[1]} - ${c[2]}** está em Numerar${c[3]}!`;
+    enviarMensagemDiscord(mensagem, 'WEBHOOK_URL_REVISAO');
+    moverPasta(c)
+  }
+}
+
 function analisarTipoEnvio(c) {
-  if (c[9].includes("TRADUÇÃO") && !c[9]== "18 Tradução Externa") {
+  if (c[9].includes("TRADUÇÃO") && !c[9]== "18 TRADUÇÂO EXTERNA") {
     handleDiscordTraducao(c)
   } else if (c[9].includes("REVISÃO")) {
     handleDiscordRevisao(c)
@@ -70,6 +81,8 @@ function analisarTipoEnvio(c) {
     handleDiscordAssinarImprimir(c)
   } else if (c[9].includes("IMPRIMIR")) {
     handleDiscordImprimir(c)
+  } else if (c[9].includes("NUMERAR")) {
+    handleDiscordNumerar(c)
   }
 }
 
@@ -77,7 +90,7 @@ function handleDiscordUrgencia(c) {
   if (c[7] == "NÃO" && c[8] == "SIM") {
     c[3] = " SAIU DA URGÊNCIA"
     analisarTipoEnvio(c)
-  } else if (valor == "SIM") {
+  } else if (c[8] == "SIM") {
     c[3] = " com urgência :rotating_light:"
     analisarTipoEnvio(c)
   }
@@ -88,7 +101,6 @@ function handleDiscordUrgencia(c) {
  */
 function handleDiscordRevisao(c) {
   moverPasta(c)
-
   const dataDaPlanilha = new Date(c[6]);
 
   if (isNaN(dataDaPlanilha.getTime())) {
@@ -97,6 +109,9 @@ function handleDiscordRevisao(c) {
   }
   
   DT.setHours(0, 0, 0, 0);
+  console.log("DATA: " + dataDaPlanilha.getTime())
+  console.log(DT.getTime())
+  console.log(dataDaPlanilha.getTime() !== DT.getTime())
 
   if (dataDaPlanilha.getTime() !== DT.getTime()) {
     Logger.log(`Ação 'Revisão' ignorada para a linha ${c[0]}: A data (${dataDaPlanilha.toLocaleDateString('pt-BR')}) não é a de hoje.`);
@@ -180,8 +195,12 @@ function buscarPastaRecursivamente(pastaPai, nomeDaPasta) {
   return null;
 }
 
+/**
+ * Move uma pasta de projeto com base em um status definido em uma planilha.
+ * A função realiza uma busca global pela pasta de origem e uma busca local (dentro de uma pasta raiz) pela pasta de destino.
+ */
 function moverPasta(c) {
-  let v = c[7]
+  let v = c[7];
 
   if (!v) {
     Logger.log("Status limpo. Nenhuma ação necessária.");
@@ -189,73 +208,65 @@ function moverPasta(c) {
   }
 
   // Normalização dos nomes
-  if (v == '01 Scan') { v = '01 Escanear' }
-  if (v == '04 Revisão') { v = '04 Revisar' }
-  if (v == '06 Numerar') { v = '10 Numerar' }
-  if (v == '03 Tradução') { v = '03 Traduzir' }
-  if (v == '07 Assinar Digital') { v = '07 Assinar digitalmente' }
   if (v == '08 Assinar e Imprimir') { v = '07 Assinar digitalmente' }
 
   try {
     const nomePastaParaMover = `Orç_${c[2]} - ${c[1]}`;
     const nomePastaDestinoPrincipal = v;
 
-    Logger.log(`Iniciando processo para mover a pasta "${nomePastaParaMover}" para "${nomePastaDestinoPrincipal}".`);
+    Logger.log(`Iniciando processo para mover a pasta que contém "${nomePastaParaMover}" para a pasta que contém "${nomePastaDestinoPrincipal}".`);
 
-    // 1. Encontra a pasta de ORIGEM
-    const pastaOrigem = encontrarPastaPorNome(nomePastaParaMover);
+    // 1. Encontra a pasta de ORIGEM (busca GLOBAL, sem passar o segundo parâmetro)
+    //    Esta busca é feita em todo o Google Drive do usuário.
+    const pastaOrigem = encontrarPasta(nomePastaParaMover);
 
     if (!pastaOrigem) {
-      Logger.log(`ERRO CRÍTICO: A pasta de origem "${nomePastaParaMover}" não foi encontrada no Drive. A execução será interrompida.`);
+      Logger.log(`ERRO CRÍTICO: A pasta de origem contendo "${nomePastaParaMover}" não foi encontrada no Drive. A execução será interrompida.`);
+      let mensagem = `ERRO CRÍTICO: A pasta de origem contendo "${nomePastaParaMover}" não foi encontrada no Drive. A execução será interrompida.`;
+      enviarMensagemDiscord(mensagem, 'WEBHOOK_HISTORICO');
       return;
     }
 
-    // 2. Acessa a pasta raiz a partir do ID fornecido.
+    // 2. Acessa a pasta raiz do projeto a partir do seu ID.
     const pastaRaiz = DriveApp.getFolderById(ID_DA_PASTA_RAIZ);
-    let pastaDestinoFinal = null;
-
-    // 3. Procura a pasta de destino SOMENTE DENTRO da pastaRaiz.
-    const pastasDestinoEncontradas = pastaRaiz.getFoldersByName(nomePastaDestinoPrincipal);
-
-    if (pastasDestinoEncontradas.hasNext()) {
-      pastaDestinoFinal = pastasDestinoEncontradas.next();
-      Logger.log(`Pasta de destino "${nomePastaDestinoPrincipal}" encontrada dentro da pasta raiz.`);
-    } else {
-      Logger.log(`AVISO: Nenhuma pasta com o nome "${nomePastaDestinoPrincipal}" foi encontrada DENTRO da pasta raiz.`);
-    }
-    // --- FIM DA NOVA LÓGICA ---
-
-    // 4. Lógica para a subpasta do mês (continua a mesma, mas agora depende da pastaDestinoFinal ter sido encontrada)
+    
+    // 3. Procura a pasta de destino (busca LOCAL, passando a 'pastaRaiz' como segundo parâmetro)
+    //    Esta busca é mais rápida, pois só procura dentro da pasta raiz do projeto.
+    let pastaDestinoFinal = encontrarPasta(nomePastaDestinoPrincipal, pastaRaiz);
+    
+    // 4. Lógica para a subpasta do mês
     if (c[4] && pastaDestinoFinal && v == VALOR_STATUS_TRADUCAO_EXTERNA) {
       Logger.log(`Status é "${VALOR_STATUS_TRADUCAO_EXTERNA}", procurando subpasta do mês: "${c[4]}".`);
 
       let pastaDoMes;
+      // Para a subpasta do mês, uma busca exata é mais segura e eficiente.
       const pastasFilhas = pastaDestinoFinal.getFoldersByName(c[4]);
 
       if (pastasFilhas.hasNext()) {
         pastaDoMes = pastasFilhas.next();
         Logger.log(`Subpasta do mês encontrada: "${pastaDoMes.getName()}".`);
-      } else {
-        pastaDoMes = pastaDestinoFinal.createFolder(c[4]);
-        Logger.log(`Subpasta do mês criada: "${pastaDoMes.getName()}".`);
       }
+
       pastaDestinoFinal = pastaDoMes;
     }
 
-    // 5. Move a pasta para o destino final, se ele foi encontrado
+    // 5. Move a pasta para o destino final, se um destino válido foi encontrado
     if (pastaDestinoFinal) {
-      // Pega a pasta pai da pasta de origem
+      // Pega a pasta pai atual da pasta de origem para verificar se a movimentação é necessária
       const pastaPaiOrigem = pastaOrigem.getParents().next(); 
       
       if (pastaPaiOrigem.getId() === pastaDestinoFinal.getId()) {
-        Logger.log(`AVISO: A pasta "${nomePastaParaMover}" já está no diretório de destino "${pastaDestinoFinal.getName()}". Nenhuma ação é necessária.`);
+        Logger.log(`AVISO: A pasta "${pastaOrigem.getName()}" já está no diretório de destino "${pastaDestinoFinal.getName()}". Nenhuma ação é necessária.`);
         return; 
       }
 
+      // Move a pasta para o destino final
       pastaOrigem.moveTo(pastaDestinoFinal);
-      Logger.log(`SUCESSO: A pasta "${nomePastaParaMover}" foi movida para "${pastaDestinoFinal.getName()}".`);
+      Logger.log(`SUCESSO: A pasta "${pastaOrigem.getName()}" foi movida para "${pastaDestinoFinal.getName()}".`);
+      const mensagem = `-------------------------\nPasta: ${pastaOrigem.getName()}\nMovida: ${pastaDestinoFinal.getName()}\nStatus inserido: ${v}\n-------------------------`;
+      enviarMensagemDiscord(mensagem, 'WEBHOOK_HISTORICO');
     } else {
-      Logger.log(`ERRO FINAL: A pasta de destino "${nomePastaDestinoPrincipal}" não pôde ser encontrada ou criada. A pasta de origem não foi movida.`);
+      Logger.log(`ERRO FINAL: A pasta de destino contendo "${nomePastaDestinoPrincipal}" não pôde ser encontrada dentro da pasta raiz. A pasta de origem não foi movida.`);
     }
 
   } catch (error) {
@@ -273,7 +284,7 @@ function corrigirNomesAutomaticamente() {
   const nomeDoMes = MESES[mesNumero - 1];
 
   // O script vai procurar por este padrão de caminho:
-  const caminhoDaPasta = `${mes} Atendimento/01. Orçamentos em aprovação/Em aprovação ${ano}/${mes} Em aprovação ${nomeDoMes} ${ano}`;
+  const caminhoDaPasta = `08 Atendimento/01. Orçamentos em aprovação/Em aprovação ${ano}/${mes} Em aprovação ${nomeDoMes} ${ano}`;
 
   try {
     const pastaRaiz = DriveApp.getFolderById(ID_DA_PASTA_RAIZ);
